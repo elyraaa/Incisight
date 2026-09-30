@@ -10,7 +10,7 @@ Incisight is an incident-command application for cybersecurity incidents and ser
 - Authenticated incident tool endpoints for timeline events, service checks, advisory lookup, contradiction review, update drafting, and approval-gated publishing
 - Server-Sent Events for live dashboard updates
 - Human approval nonce flow for stakeholder update publishing
-- Test coverage for API behavior, validation, authentication, idempotency, contradiction handling, and approval controls
+- Test coverage for API behavior, validation, tool grants, idempotency, contradiction handling, and approval controls
 - Render blueprint for API, dashboard, and PostgreSQL deployment
 
 ## Project Layout
@@ -29,12 +29,12 @@ Generated local runtime folders such as `backend/.venv`, `frontend/node_modules`
 
 ## Configuration
 
-The local environment file is `.env` in the project root.
+The local environment file is `backend/.env` when running the backend commands below from `backend/`.
 
 Required for local voice testing:
 
 ```env
-ASSEMBLYAI_API_KEY=your_real_assemblyai_key
+ASSEMBLYAI_API_KEY=your_key
 ```
 
 Required for backend protection:
@@ -60,7 +60,7 @@ LLM_API_KEY=
 LLM_MODEL=
 ```
 
-`ASSEMBLYAI_AGENT_ID`, `LLM_API_KEY`, and `LLM_MODEL` are reserved for future integrations and can stay blank in the current application.
+`ASSEMBLYAI_AGENT_ID`, `LLM_API_KEY`, and `LLM_MODEL` are reserved for future integrations and can stay blank in the current application. The local app opens directly without a sign-in step.
 
 ## Local Development
 
@@ -123,6 +123,8 @@ Render generates `TOOL_API_SECRET` and `ADMIN_API_SECRET` for the deployed API. 
 ## Security Posture
 
 - The AssemblyAI API key stays on the backend and is exchanged for short-lived browser tokens.
+- The demo opens incidents directly without operator authentication. Do not expose this build as a public production service without an access boundary and controls on voice token issuance.
+- The agent can read the current incident and prepare unsaved proposals. An operator must confirm a timeline entry or save an update draft in the dashboard; publication still requires a separate approval click.
 - Tool routes require either the server tool secret or a signed, incident-scoped grant.
 - Voice transcript payloads are treated as untrusted input and validated through Pydantic schemas.
 - Stakeholder publishing requires an approval nonce tied to the draft, approver, and expiration time.
@@ -141,5 +143,5 @@ Render generates `TOOL_API_SECRET` and `ADMIN_API_SECRET` for the deployed API. 
 
 - Stakeholder publishing is represented inside Incisight rather than sent to an external email, Slack, or ticketing system.
 - Service-health and advisory evidence are controlled application sources, not live internet fetches.
-- Authentication is designed for a single trusted operator environment.
+- Operator authentication and incident-level permissions remain Phase 4 work for a production deployment.
 - The semantic contradiction stage is deterministic; optional LLM-backed review can be added later.

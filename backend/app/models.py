@@ -58,6 +58,7 @@ class Incident(Base):
     severity: Mapped[str] = mapped_column(String(5))
     status: Mapped[str] = mapped_column(String(20), default=IncidentStatus.ACTIVE.value)
     keyterms: Mapped[list] = mapped_column(JSON, default=list)
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

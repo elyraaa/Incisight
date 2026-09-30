@@ -32,3 +32,56 @@ def test_publish_requires_matching_nonce(client,incident,tool_headers):
 def test_invalid_schema(client,incident,tool_headers):
     response=client.post("/api/tools/record-incident-event",headers=tool_headers,json={"incident_id":incident["id"],"event_type":"remediation","summary":"x","source_type":"user","confidence":2})
     assert response.status_code==422
+
+def test_reviewed_conflict_is_visible_in_incident(client,incident,tool_headers):
+    base={"incident_id":incident["id"],"event_type":"observation","source_type":"user","confidence":.8,"subject":"database"}
+    client.post("/api/tools/record-incident-event",headers=tool_headers,json={**base,"summary":"Database is healthy.","claim_value":"healthy"})
+    second=client.post("/api/tools/record-incident-event",headers=tool_headers,json={**base,"summary":"Database is degraded.","claim_value":"degraded"})
+    conflict_id=second.json()["potential_contradictions"][0]["id"]
+    reviewed=client.patch(f"/api/contradictions/{conflict_id}",json={"status":"resolved","resolution_note":"Status evidence supersedes the initial report."})
+    assert reviewed.status_code==200
+    assert reviewed.json()["status"]=="resolved"
+    snapshot=client.get(f"/api/incidents/{incident['id']}").json()
+    assert snapshot["contradictions"][0]["resolution_note"]=="Status evidence supersedes the initial report."
+
+
+def test_direct_incident_access_and_cors(client, incident):
+    assert client.get(f"/api/incidents/{incident['id']}").status_code == 200
+    recorded = client.post("/api/events", json={"incident_id":incident["id"],"event_type":"observation","summary":"Operator report","source_type":"user","confidence":0.7})
+    assert recorded.status_code == 200
+    preflight = client.options("/api/voice/token", headers={"Origin":"http://localhost:5173", "Access-Control-Request-Method":"POST", "Access-Control-Request-Headers":"content-type"})
+    assert preflight.status_code == 200
+    assert preflight.headers["access-control-allow-origin"] == "http://localhost:5173"
+
+
+def test_voice_token_without_login(client, incident, monkeypatch):
+    from app import main
+    monkeypatch.setattr(main.settings, "assemblyai_api_key", "test-key")
+    class ProviderResponse:
+        is_error = False
+        def json(self): return {"token":"temporary-provider-token"}
+    class ProviderClient:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def get(self, url, **kwargs):
+            assert kwargs["headers"]["Authorization"] == "Bearer test-key"
+            return ProviderResponse()
+    monkeypatch.setattr(main.httpx, "AsyncClient", ProviderClient)
+    issued = client.post("/api/voice/token", json={"incident_id":incident["id"]})
+    assert issued.status_code == 200
+    grant = issued.json()["tool_grant"]
+    context = client.get("/api/tools/incident-context", params={"incident_id":incident["id"]}, headers={"Authorization":f"Bearer {grant}"})
+    assert context.status_code == 200 and context.json()["incident"]["id"] == incident["id"]
+    other = client.post("/api/incidents",json={"title":"Another incident","affected_service":"API","severity":"SEV-2"}).json()
+    denied = client.get("/api/tools/incident-context", params={"incident_id":other["id"]}, headers={"Authorization":f"Bearer {grant}"})
+    assert denied.status_code == 403
+
+
+def test_voice_proposals_remain_unsaved_until_dashboard_confirmation(client, incident, tool_headers):
+    preview = client.get("/api/tools/preview-stakeholder-update", params={"incident_id":incident["id"]}, headers=tool_headers)
+    assert preview.status_code == 200 and preview.json()["saved"] is False
+    assert client.get(f"/api/incidents/{incident['id']}").json()["updates"] == []
+    saved = client.post("/api/updates/draft-from-proposal", json={"incident_id":incident["id"],"content":preview.json()["content"]})
+    assert saved.status_code == 200 and saved.json()["update"]["status"] == "draft"
+    assert client.get(f"/api/incidents/{incident['id']}").json()["updates"][0]["content"] == preview.json()["content"]

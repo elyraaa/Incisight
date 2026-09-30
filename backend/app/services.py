@@ -59,7 +59,8 @@ def iso(value):
 
 def incident_dict(row: models.Incident) -> dict:
     return {"id": row.id, "title": row.title, "affected_service": row.affected_service, "severity": row.severity,
-            "status": row.status, "keyterms": row.keyterms, "started_at": iso(row.started_at), "resolved_at": iso(row.resolved_at)}
+            "status": row.status, "keyterms": row.keyterms, "is_demo": row.is_demo,
+            "started_at": iso(row.started_at), "resolved_at": iso(row.resolved_at)}
 
 
 def event_dict(row: models.IncidentEvent) -> dict:
@@ -89,8 +90,8 @@ def update_dict(row: models.StakeholderUpdate) -> dict:
             "approved_at": iso(row.approved_at), "created_at": iso(row.created_at)}
 
 
-def create_incident(db: Session, payload: IncidentCreate) -> models.Incident:
-    row = models.Incident(**payload.model_dump())
+def create_incident(db: Session, payload: IncidentCreate, is_demo: bool = False) -> models.Incident:
+    row = models.Incident(**payload.model_dump(), is_demo=is_demo)
     db.add(row); db.commit(); db.refresh(row)
     return row
 
@@ -167,7 +168,7 @@ def aggregate(db: Session, incident_id: str) -> dict:
             "contradictions": [contradiction_dict(x, db) for x in contradictions], "updates": [update_dict(x) for x in updates]}
 
 
-def draft_update(db: Session, incident_id: str) -> models.StakeholderUpdate:
+def preview_update(db: Session, incident_id: str) -> str:
     data = aggregate(db, incident_id); incident = data["incident"]
     events = data["timeline"][-5:]
     verified = [e["summary"] for e in events if e["source_type"] == "tool"]
@@ -176,7 +177,11 @@ def draft_update(db: Session, incident_id: str) -> models.StakeholderUpdate:
             f"Verified: {' '.join(verified) if verified else 'No tool-verified facts yet.'} "
             f"Actions: {' '.join(actions) if actions else 'Incident team is assessing impact.'} "
             "This is a simulated Incisight stakeholder update.")
-    row = models.StakeholderUpdate(incident_id=incident_id, content=body)
+    return body
+
+
+def draft_update(db: Session, incident_id: str) -> models.StakeholderUpdate:
+    row = models.StakeholderUpdate(incident_id=incident_id, content=preview_update(db, incident_id))
     db.add(row); db.commit(); db.refresh(row); return row
 
 
@@ -185,7 +190,7 @@ def reset_demo(db: Session) -> models.Incident:
         db.query(table).delete()
     db.commit()
     incident = create_incident(db, IncidentCreate(title="Customer Login Failure", affected_service="Authentication Service",
-        severity="SEV-1", keyterms=["AuthN", "PostgreSQL", "CVE-2026-4107", "connection pool"]))
+        severity="SEV-1", keyterms=["AuthN", "PostgreSQL", "CVE-2026-4107", "connection pool"]), is_demo=True)
     event, _ = record_event(db, RecordEventRequest(incident_id=incident.id, event_type="observation",
         summary="Authentication is failing, but the database appears healthy.", subject="database", claim_value="healthy",
         source_type="user", confidence=.72, idempotency_key="demo-initial-claim"))

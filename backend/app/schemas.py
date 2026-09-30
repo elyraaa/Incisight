@@ -37,6 +37,11 @@ class DraftUpdateRequest(BaseModel):
     incident_id: IncidentId
 
 
+class DraftFromProposalRequest(BaseModel):
+    incident_id: IncidentId
+    content: Annotated[str, Field(min_length=10, max_length=4000)]
+
+
 class ApprovalNonceRequest(BaseModel):
     update_id: IncidentId
     approver: Annotated[str, Field(min_length=2, max_length=80)]

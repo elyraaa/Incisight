@@ -43,6 +43,11 @@ def ready(db: Session = Depends(get_db)):
     return {"status": "ready"}
 
 
+@app.get("/api/capabilities")
+def capabilities():
+    return {"voice_available": bool(settings.assemblyai_api_key)}
+
+
 @app.post("/api/incidents", status_code=201)
 async def create_incident(payload: schemas.IncidentCreate, db: Session = Depends(get_db)):
     row = services.create_incident(db, payload)
@@ -86,16 +91,31 @@ async def voice_token(payload: schemas.VoiceTokenRequest, db: Session = Depends(
     if not settings.assemblyai_api_key:
         raise HTTPException(503, detail={"code": "assemblyai_not_configured", "recovery": "Set ASSEMBLYAI_API_KEY on the backend."})
     started = time.monotonic()
-    async with httpx.AsyncClient(timeout=8) as client:
-        response = await client.get("https://agents.assemblyai.com/v1/token",
-            params={"expires_in_seconds": 120, "max_session_duration_seconds": 1800},
-            headers={"Authorization": f"Bearer {settings.assemblyai_api_key}"})
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            response = await client.get("https://agents.assemblyai.com/v1/token",
+                params={"expires_in_seconds": 120, "max_session_duration_seconds": 1800},
+                headers={"Authorization": f"Bearer {settings.assemblyai_api_key}"})
+    except httpx.RequestError as exc:
+        raise HTTPException(502, detail={"code": "voice_token_failed", "recovery": "The voice service could not be reached. Try again."}) from exc
     if response.is_error:
         raise HTTPException(502, detail={"code": "voice_token_failed", "recovery": "Check the AssemblyAI key and try again."})
     return {"token": response.json()["token"], "tool_grant": issue_tool_grant(incident.id),
             "expires_in_seconds": 120, "session_max_seconds": 1800,
             "keyterms": list(dict.fromkeys([incident.affected_service, *incident.keyterms])),
             "telemetry": {"provider": "assemblyai", "duration_ms": round((time.monotonic()-started)*1000)}}
+
+
+@app.get("/api/tools/incident-context")
+def incident_context(incident_id: str, auth: dict = Depends(require_tool_auth), db: Session = Depends(get_db)):
+    assert_grant_incident(auth, incident_id)
+    return services.aggregate(db, incident_id)
+
+
+@app.get("/api/tools/preview-stakeholder-update")
+def preview_stakeholder_update(incident_id: str, auth: dict = Depends(require_tool_auth), db: Session = Depends(get_db)):
+    assert_grant_incident(auth, incident_id)
+    return {"content": services.preview_update(db, incident_id), "saved": False}
 
 
 @app.post("/api/transcripts")
@@ -108,6 +128,15 @@ async def save_transcript(payload: schemas.TranscriptRequest, auth: dict = Depen
 @app.post("/api/tools/record-incident-event")
 async def record_incident_event(payload: schemas.RecordEventRequest, auth: dict = Depends(require_tool_auth), db: Session = Depends(get_db)):
     assert_grant_incident(auth, payload.incident_id)
+    event, duplicate = services.record_event(db, payload)
+    contradictions = services.find_for_event(db, event) if not duplicate else []
+    await services.bus.publish(payload.incident_id, {"type": "timeline.changed", "event_id": event.id})
+    return {"ok": True, "duplicate": duplicate, "event": services.event_dict(event),
+            "potential_contradictions": [services.contradiction_dict(x, db) for x in contradictions]}
+
+
+@app.post("/api/events")
+async def dashboard_record_event(payload: schemas.RecordEventRequest, db: Session = Depends(get_db)):
     event, duplicate = services.record_event(db, payload)
     contradictions = services.find_for_event(db, event) if not duplicate else []
     await services.bus.publish(payload.incident_id, {"type": "timeline.changed", "event_id": event.id})
@@ -184,6 +213,16 @@ async def dashboard_draft(payload: schemas.DraftUpdateRequest, db: Session = Dep
     return {"ok": True, "update": services.update_dict(row), "requires_explicit_approval": True}
 
 
+@app.post("/api/updates/draft-from-proposal")
+async def draft_from_proposal(payload: schemas.DraftFromProposalRequest, db: Session = Depends(get_db)):
+    if not db.get(models.Incident, payload.incident_id):
+        raise HTTPException(404, detail={"code": "incident_not_found"})
+    row = models.StakeholderUpdate(incident_id=payload.incident_id, content=payload.content.strip())
+    db.add(row); db.commit(); db.refresh(row)
+    await services.bus.publish(payload.incident_id, {"type": "update.changed", "update_id": row.id})
+    return {"ok": True, "update": services.update_dict(row), "requires_explicit_approval": True}
+
+
 @app.post("/api/updates/publish")
 async def dashboard_publish(payload: schemas.ApproveUpdateRequest, db: Session = Depends(get_db)):
     """Human dashboard path: the short-lived nonce is proof of the explicit click."""
@@ -223,7 +262,7 @@ async def reset_demo(x_admin_secret: Annotated[str | None, Header()] = None, db:
 def start_demo(db: Session = Depends(get_db)):
     """Local/demo convenience: create the deterministic scenario without deleting other incidents."""
     incident = services.create_incident(db, schemas.IncidentCreate(title="Customer Login Failure", affected_service="Authentication Service",
-        severity="SEV-1", keyterms=["AuthN", "PostgreSQL", "CVE-2026-4107", "connection pool"]))
+        severity="SEV-1", keyterms=["AuthN", "PostgreSQL", "CVE-2026-4107", "connection pool"]), is_demo=True)
     services.record_event(db, schemas.RecordEventRequest(incident_id=incident.id, event_type="observation",
         summary="Authentication is failing, but the database appears healthy.", subject="database", claim_value="healthy",
         source_type="user", confidence=.72, idempotency_key="demo-initial-claim"))

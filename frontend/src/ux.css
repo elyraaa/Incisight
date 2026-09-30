@@ -1,0 +1,262 @@
+/* UX improvements layered over the original visual design. */
+body {
+  line-height: 1.5;
+}
+
+button, a {
+  font-family: inherit;
+}
+
+input, select, textarea {
+  font-family: Manrope, sans-serif;
+}
+
+button {
+  transition: background-color .15s ease, border-color .15s ease, opacity .15s ease;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: .58;
+}
+
+button:focus-visible, a:focus-visible, input:focus-visible,
+select:focus-visible, textarea:focus-visible {
+  outline: 3px solid var(--orange);
+  outline-offset: 3px;
+}
+
+.primary:hover:not(:disabled), .approve:hover:not(:disabled) {
+  background: #343630;
+  color: #fff;
+}
+
+.demo:hover:not(:disabled), .outline:hover:not(:disabled),
+.empty-card button:hover:not(:disabled), .text-action:hover:not(:disabled) {
+  background: #eae9e2;
+}
+
+.create-card {
+  padding-top: 64px;
+  padding-bottom: 64px;
+}
+
+.card-head h2 {
+  margin-top: 28px;
+}
+
+label {
+  font-size: 12px;
+}
+
+input, select {
+  min-height: 44px;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #686a62;
+}
+
+.primary, .demo, .outline, .approve, .empty-card button {
+  min-height: 44px;
+  font-size: 12px;
+}
+
+.recent {
+  border-top: 1px solid var(--line);
+  margin-top: 28px;
+  padding-top: 20px;
+}
+
+.recent h3 {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.recent-list {
+  display: grid;
+  gap: 7px;
+}
+
+.recent-list button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 12px;
+  background: #f1f0eb;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.recent-list button:hover:not(:disabled) {
+  background: #e7ebd5;
+  border-color: #abb588;
+}
+
+.recent-list button span {
+  flex: 1;
+  min-width: 0;
+}
+
+.recent-list strong, .recent-list small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-list strong { font-size: 13px; }
+.recent-list small { color: #575950; font-size: 11px; }
+.recent-list b { font: 600 11px "DM Mono", monospace; }
+.recent-list svg { width: 16px; flex: none; }
+
+.avatar {
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+}
+
+.panel-title {
+  min-height: 50px;
+  height: auto;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.panel-title svg { width: 17px; }
+.panel-title b { font-size: 11px; }
+.tag, .severity, .live-dot { font-size: 11px; }
+.voice-body p { font-size: 14px; }
+.voice-button:disabled { background: #dbdad4; box-shadow: 0 0 0 8px #eeede8; }
+.transcript p { font-size: 13px; }
+.transcript b { font-size: 11px; }
+.time, .source, .event small { font-size: 11px; }
+.event p { font-size: 15px; }
+.empty { font-size: 13px; }
+.empty-card button { padding: 10px 14px; }
+.contradiction article h3 { font-size: 14px; }
+.contradiction article p { font-size: 13px; line-height: 1.5; }
+.contradiction article small, .evidence small { font-size: 11px; }
+.evidence > div { font-size: 12px; flex-wrap: wrap; }
+.evidence p, .action p, .update > p { font-size: 13px; }
+.action b { font-size: 12px; }
+.published { font-size: 12px; }
+.error-banner { font-size: 13px; cursor: pointer; }
+
+.text-action {
+  display: block;
+  min-height: 38px;
+  margin-top: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--ink);
+  background: transparent;
+  font: 600 11px "DM Mono", monospace;
+  cursor: pointer;
+}
+
+.resolution-form {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f0efe9;
+}
+
+.resolution-form label {
+  margin: 0 0 6px;
+  font-size: 11px;
+}
+
+.resolution-form textarea {
+  display: block;
+  width: 100%;
+  min-height: 80px;
+  padding: 10px;
+  border: 1px solid #aaa;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+  resize: vertical;
+}
+
+.resolution-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.resolution-actions button {
+  flex: 1;
+  min-width: 90px;
+  min-height: 40px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  font: 600 11px "DM Mono", monospace;
+  cursor: pointer;
+}
+
+.resolution-actions button:last-child {
+  border-color: #8b422b;
+  color: #7e250b;
+}
+
+.resolution-note {
+  border-left-color: #90ac31 !important;
+}
+
+button:disabled { cursor: not-allowed; opacity: .6; }
+.demo-badge { margin-left: 8px; padding: 4px 7px; background: #e4e3dc; font: 600 11px "DM Mono", monospace; }
+.voice-proposal { margin: 12px 16px 16px; padding: 16px; border: 1px solid #9aaa68; background: #eef2dc; }
+.voice-proposal strong { font: 700 12px "DM Mono", monospace; }
+.voice-proposal p { margin: 10px 0; line-height: 1.5; overflow-wrap: anywhere; }
+.proposal-meta { font-size: 12px; text-transform: uppercase; }
+.proposal-warning { color: #7e250b; font-weight: 700; }
+.proposal-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.proposal-actions button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--ink); background: var(--paper); cursor: pointer; font: 700 11px "DM Mono", monospace; }
+.proposal-actions button:last-child { background: var(--acid); }
+
+.approval-confirm {
+  margin: 0 15px;
+  padding: 13px;
+  background: #eef2dc;
+  border: 1px solid #9aaa68;
+}
+
+.approval-confirm strong { font-size: 13px; }
+.approval-confirm p { margin: 5px 0 12px; font-size: 12px; }
+.approval-confirm > div { display: flex; gap: 8px; }
+.approval-confirm button {
+  flex: 1;
+  min-height: 44px;
+  border: 1px solid var(--ink);
+  background: transparent;
+  font: 700 11px "DM Mono", monospace;
+  cursor: pointer;
+}
+.approval-confirm .approve {
+  margin: 0;
+  width: auto;
+  background: var(--acid);
+}
+
+@media (max-width: 900px) {
+  .hero { min-height: 48vh; }
+  .create-card { padding-top: 48px; padding-bottom: 48px; }
+}
+
+@media (max-width: 560px) {
+  .hero { min-height: auto; padding: 88px 8vw 36px; }
+  .hero h1 { font-size: clamp(34px, 10vw, 43px); }
+  .trust { margin-top: 24px; }
+  .incident-bar h1 { font-size: 25px; }
+  .voice-body { padding: 18px; }
+  .panel-title { padding: 8px 12px; }
+  .timeline { padding: 16px 12px; }
+  .timeline article { grid-template-columns: 30px 60px minmax(0, 1fr); }
+  .event { min-width: 0; }
+  .event p { overflow-wrap: anywhere; }
+}

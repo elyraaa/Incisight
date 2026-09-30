@@ -15,13 +15,13 @@ Incisight is split into a browser dashboard, a FastAPI application, and a relati
 
 ## Runtime Flow
 
-1. The operator opens the dashboard.
+1. The operator opens the dashboard directly.
 2. The dashboard creates or loads an incident from the backend.
 3. The dashboard requests a voice token from the backend.
 4. The backend exchanges the private AssemblyAI API key for a short-lived browser token and returns a signed Incisight tool grant.
 5. The browser connects to AssemblyAI and sends the session prompt, key terms, voice settings, and flat tool schemas.
-6. Tool calls from the voice session are dispatched to Incisight tool endpoints.
-7. The backend validates each request, writes incident data, and emits Server-Sent Events.
+6. Voice tool calls read current incident data or prepare unsaved proposals in the browser.
+7. The operator reviews a proposal and confirms a dashboard write; the backend validates it and emits Server-Sent Events.
 8. The dashboard updates live as timeline items, evidence, contradictions, and stakeholder updates change.
 
 ## Data Model
@@ -43,9 +43,11 @@ The browser never receives the permanent AssemblyAI API key or permanent tool se
 - a short-lived AssemblyAI connection token
 - a signed Incisight tool grant scoped to one incident
 
+The current demo has no sign-in step. Incident reads, dashboard writes, and voice token requests are available to anyone who can reach the app. Production deployment requires an access boundary and controls on voice token issuance.
+
 Server-to-server tool calls can use `X-Tool-Secret` with `TOOL_API_SECRET`. Administrative operations use `X-Admin-Secret` with `ADMIN_API_SECRET`.
 
-Stakeholder publishing requires an approval nonce that expires after two minutes and is bound to the update, approver, and draft content. This prevents accidental or replayed approval.
+Stakeholder publishing requires an approval nonce that expires after two minutes and is bound to the update ID and approver. The UI presents a separate confirmation step before requesting the nonce.
 
 ## Evidence and Contradictions
 
